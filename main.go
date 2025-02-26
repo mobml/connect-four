@@ -1,11 +1,14 @@
 package main
 
 import (
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/vector"
+	"fmt"
 	"image/color"
 	"log"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
@@ -21,35 +24,53 @@ var (
 	colorGreen    = color.RGBA{173, 247, 182, 255}
 	colorYellow   = color.RGBA{255, 238, 147, 255}
 	board         [rows][columns]string
+	winner        = ""
 	currentPlayer = "X"
+	gameState     = StatePlaying
 )
 
-type Game struct{}
+type GameState int
+
+const (
+	StatePlaying = iota
+	StateGameOver
+)
+
+type Game struct {
+	mousePressed bool
+}
 
 func (g *Game) Update() error {
-	if inpututil.IsKeyJustPressed(ebiten.Key1) {
-		dropPiece(0, currentPlayer)
-		switchPlayer()
-	} else if inpututil.IsKeyJustPressed(ebiten.Key2) {
-		dropPiece(1, currentPlayer)
-		switchPlayer()
-	} else if inpututil.IsKeyJustPressed(ebiten.Key3) {
-		dropPiece(2, currentPlayer)
-		switchPlayer()
-	} else if inpututil.IsKeyJustPressed(ebiten.Key4) {
-		dropPiece(3, currentPlayer)
-		switchPlayer()
-	} else if inpututil.IsKeyJustPressed(ebiten.Key5) {
-		dropPiece(4, currentPlayer)
-		switchPlayer()
-	} else if inpututil.IsKeyJustPressed(ebiten.Key6) {
-		dropPiece(5, currentPlayer)
-		switchPlayer()
-	} else if inpututil.IsKeyJustPressed(ebiten.Key7) {
-		dropPiece(6, currentPlayer)
-		switchPlayer()
-	}
+	x, _ := ebiten.CursorPosition()
 
+	switch gameState {
+	case StatePlaying:
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) && !g.mousePressed {
+			col := x / cellSize
+			if col >= 0 && col < columns {
+				dropPiece(col, currentPlayer)
+				switchPlayer()
+			}
+			g.mousePressed = true
+		} else if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			g.mousePressed = false
+		}
+
+		if checkVictory("X") {
+			winner = "X"
+			gameState = StateGameOver
+		} else if checkVictory("O") {
+			winner = "O"
+			gameState = StateGameOver
+		}
+	case StateGameOver:
+		if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+			resetBoard()
+			currentPlayer = "X"
+			winner = ""
+			gameState = StatePlaying
+		}
+	}
 	return nil
 }
 
@@ -73,6 +94,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 					float32(y+cellSize/2), float32(cellSize/2)-10, colorYellow, true)
 			}
 		}
+	}
+	if gameState == StateGameOver {
+		msg := fmt.Sprintf("El jugador %s ha ganado\nPresiona R para reiniciar", winner)
+		ebitenutil.DebugPrintAt(screen, msg, 10, 10)
 	}
 }
 
@@ -98,9 +123,71 @@ func switchPlayer() {
 	}
 }
 
+func checkVictory(player string) bool {
+	//horizontal
+	for row := 0; row < rows; row++ {
+		for col := 0; col <= columns-4; col++ {
+
+			if board[row][col] == player &&
+				board[row][col+1] == player &&
+				board[row][col+2] == player &&
+				board[row][col+3] == player {
+				return true
+			}
+		}
+	}
+
+	//vertical
+	for row := 0; row <= rows-4; row++ {
+		for col := 0; col < columns; col++ {
+			if board[row][col] == player &&
+				board[row+1][col] == player &&
+				board[row+2][col] == player &&
+				board[row+3][col] == player {
+				return true
+			}
+		}
+	}
+
+	//right diagonal
+	for row := 0; row <= rows-4; row++ {
+		for col := 0; col <= columns-4; col++ {
+			if board[row][col] == player &&
+				board[row+1][col+1] == player &&
+				board[row+2][col+2] == player &&
+				board[row+3][col+3] == player {
+				return true
+			}
+		}
+	}
+
+	//left diagonal
+	for row := 0; row <= rows-4; row++ {
+		for col := 3; col < columns; col++ {
+			if board[row][col] == player &&
+				board[row+1][col-1] == player &&
+				board[row+2][col-2] == player &&
+				board[row+3][col-3] == player {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func resetBoard() {
+	for row := 0; row < rows; row++ {
+		for col := 0; col < columns; col++ {
+			board[row][col] = ""
+		}
+	}
+}
+
 func main() {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Connect Four")
+	resetBoard()
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
 	}
