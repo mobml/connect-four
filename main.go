@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"image/color"
-	"log"
-
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"image/color"
+	"log"
 )
 
 const (
@@ -96,7 +95,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 	if gameState == StateGameOver {
-		msg := fmt.Sprintf("El jugador %s ha ganado\nPresiona R para reiniciar", winner)
+		msg := fmt.Sprintf("El jugador %s ha ganado\nPresiona R para reiniciar",
+			If(winner == "X", "1", "2"))
 		ebitenutil.DebugPrintAt(screen, msg, 10, 10)
 	}
 }
@@ -127,7 +127,6 @@ func checkVictory(player string) bool {
 	//horizontal
 	for row := 0; row < rows; row++ {
 		for col := 0; col <= columns-4; col++ {
-
 			if board[row][col] == player &&
 				board[row][col+1] == player &&
 				board[row][col+2] == player &&
@@ -182,6 +181,13 @@ func resetBoard() {
 			board[row][col] = ""
 		}
 	}
+}
+
+func If[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+	return b
 }
 
 func main() {
