@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"image/color"
 	"log"
+	"os"
 )
 
 const (
@@ -26,6 +29,10 @@ var (
 	winner        = ""
 	currentPlayer = "X"
 	gameState     = StatePlaying
+	sampleRate    = 48000
+	audioContext  *audio.Context
+	audioPlayer   *audio.Player
+	audioFile     *os.File
 )
 
 type GameState int
@@ -34,6 +41,23 @@ const (
 	StatePlaying = iota
 	StateGameOver
 )
+
+func init() {
+	audioContext = audio.NewContext(sampleRate)
+	audioFile, err := os.Open("click.mp3")
+	if err != nil {
+		log.Fatal(err)
+	}
+	decoder, err := mp3.DecodeWithSampleRate(48000, audioFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	audioPlayer, err = audioContext.NewPlayer(decoder)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 type Game struct {
 	mousePressed bool
@@ -49,6 +73,8 @@ func (g *Game) Update() error {
 			if col >= 0 && col < columns {
 				dropPiece(col, currentPlayer)
 				switchPlayer()
+				audioPlayer.Rewind()
+				audioPlayer.Play()
 			}
 			g.mousePressed = true
 		} else if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
@@ -197,4 +223,5 @@ func main() {
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
 	}
+	audioFile.Close()
 }
